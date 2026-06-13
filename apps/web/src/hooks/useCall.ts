@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, useRef } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useSocket, useSocketEvent } from "./useSocket";
@@ -8,7 +8,9 @@ import { useMediasoup } from "./useMediasoup";
 import { useCallStore } from "@/store/callStore";
 import { useChatStore } from "@/store/chatStore";
 import { startCompositeRecording, type CompositeRecorder } from "@/lib/recorder";
-import type { UserRole, Participant, Message } from "@supportvision/types";
+import type { UserRole, Participant, Message, Ratings } from "@supportvision/types";
+
+export type EndState = "idle" | "awaiting-feedback" | "ready";
 
 interface UseCallOptions {
   sessionId: string;
@@ -42,6 +44,11 @@ export function useCall({ sessionId, userName, role, inviteToken }: UseCallOptio
 
   const router = useRouter();
   const recorderRef = useRef<CompositeRecorder | null>(null);
+
+  // End-of-call feedback gating
+  const [endState, setEndState] = useState<EndState>("idle");
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackAgentName, setFeedbackAgentName] = useState("the agent");
 
   // Join session
   useEffect(() => {
@@ -160,6 +167,18 @@ export function useCall({ sessionId, userName, role, inviteToken }: UseCallOptio
     }
   });
 
+  // Customer: agent asked for end-of-call feedback → show the form.
+  useSocketEvent(socket, "feedback:requested", (payload) => {
+    setFeedbackAgentName(payload.agentName);
+    setFeedbackOpen(true);
+  });
+
+  // Agent: customer submitted feedback → "Confirm end" can enable.
+  useSocketEvent(socket, "feedback:received", () => {
+    setEndState("ready");
+    toast.success("Customer feedback received");
+  });
+
   // ─── Actions ──────────────────────────────────────────────────────────────
 
   const sendMessage = useCallback(
@@ -193,7 +212,8 @@ export function useCall({ sessionId, userName, role, inviteToken }: UseCallOptio
     [socket, sessionId, addMessage]
   );
 
-  const endSession = useCallback(() => {
+  // Actually end the session (agent, after feedback is collected).
+  const confirmEnd = useCallback(() => {
     socket.emit("session:end", { sessionId }, (res) => {
       if (!res.success) {
         toast.error(res.error ?? "Failed to end session");
@@ -208,6 +228,44 @@ export function useCall({ sessionId, userName, role, inviteToken }: UseCallOptio
       router.push("/dashboard");
     });
   }, [socket, sessionId, cleanupMediasoup, resetCall, resetChat, router]);
+
+  // Agent clicks "End call": ask the customer for feedback first. If no customer
+  // is present, end immediately.
+  const requestEnd = useCallback(() => {
+    socket.emit("feedback:request", { sessionId }, (res) => {
+      if (!res.success) {
+        toast.error(res.error ?? "Failed to start wrap-up");
+        return;
+      }
+      if (res.customerPresent) {
+        setEndState("awaiting-feedback");
+        toast("Asking the customer for feedback…");
+      } else {
+        confirmEnd();
+      }
+    });
+  }, [socket, sessionId, confirmEnd]);
+
+  const cancelEnd = useCallback(() => setEndState("idle"), []);
+
+  // Customer submits the feedback form.
+  const submitFeedback = useCallback(
+    (ratings: Ratings, comment: string) => {
+      return new Promise<boolean>((resolve) => {
+        socket.emit("feedback:submit", { sessionId, ratings, comment }, (res) => {
+          if (res.success) {
+            setFeedbackOpen(false);
+            toast.success("Thanks for your feedback!");
+            resolve(true);
+          } else {
+            toast.error(res.error ?? "Failed to submit feedback");
+            resolve(false);
+          }
+        });
+      });
+    },
+    [socket, sessionId]
+  );
 
   const startRecording = useCallback(() => {
     socket.emit("recording:start", { sessionId }, async (res) => {
@@ -282,9 +340,17 @@ export function useCall({ sessionId, userName, role, inviteToken }: UseCallOptio
   return {
     callState,
     sendMessage,
-    endSession,
     startRecording,
     stopRecording,
     flipCamera,
+    // end-of-call feedback gating
+    endState,
+    requestEnd,
+    cancelEnd,
+    confirmEnd,
+    // customer feedback form
+    feedbackOpen,
+    feedbackAgentName,
+    submitFeedback,
   };
 }

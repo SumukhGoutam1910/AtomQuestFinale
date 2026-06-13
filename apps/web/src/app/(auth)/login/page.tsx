@@ -133,9 +133,9 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 rounded-md border border-dashed border-border-strong bg-surface-2 p-3.5 text-center">
-            <p className="text-xs font-medium text-muted-foreground">Demo credentials</p>
+            <p className="text-xs font-medium text-muted-foreground">Demo credentials · password123</p>
             <p className="mt-1 font-mono text-xs text-foreground">
-              admin@supportvision.com · password123
+              admin@atomberg.com · priya@atomberg.com
             </p>
           </div>
         </div>

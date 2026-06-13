@@ -3,18 +3,22 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { LayoutDashboard, Activity, LogOut } from "lucide-react";
+import { LayoutDashboard, Activity, LogOut, Users2 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { Avatar } from "@/components/ui/Avatar";
 import { cn } from "@/lib/utils";
 
-const LINKS = [
-  { href: "/dashboard", label: "Sessions", icon: LayoutDashboard },
-  { href: "/admin", label: "Operations", icon: Activity },
+type Role = "ADMIN" | "AGENT";
+
+const ALL_LINKS = [
+  { href: "/dashboard", label: "Sessions", icon: LayoutDashboard, roles: ["ADMIN", "AGENT"] as Role[] },
+  { href: "/team", label: "Team", icon: Users2, roles: ["ADMIN"] as Role[] },
+  { href: "/admin", label: "Operations", icon: Activity, roles: ["ADMIN"] as Role[] },
 ];
 
-export function AppNav({ agentName }: { agentName: string }) {
+export function AppNav({ agentName, role = "AGENT" }: { agentName: string; role?: Role }) {
   const pathname = usePathname();
+  const links = ALL_LINKS.filter((l) => l.roles.includes(role));
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-surface/80 backdrop-blur-xl">
@@ -24,7 +28,7 @@ export function AppNav({ agentName }: { agentName: string }) {
         </Link>
 
         <nav className="flex items-center gap-1">
-          {LINKS.map(({ href, label, icon: Icon }) => {
+          {links.map(({ href, label, icon: Icon }) => {
             const active = pathname.startsWith(href);
             return (
               <Link
@@ -49,7 +53,9 @@ export function AppNav({ agentName }: { agentName: string }) {
             <Avatar name={agentName} size="sm" />
             <div className="hidden text-right sm:block">
               <p className="text-sm font-medium leading-tight text-foreground">{agentName}</p>
-              <p className="text-[0.7rem] uppercase tracking-wide text-subtle">Agent</p>
+              <p className="text-[0.7rem] uppercase tracking-wide text-subtle">
+                {role === "ADMIN" ? "Admin" : "Support Agent"}
+              </p>
             </div>
           </div>
           <button

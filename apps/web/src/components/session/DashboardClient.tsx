@@ -7,7 +7,7 @@ import toast from "react-hot-toast";
 import { formatDistanceToNow } from "date-fns";
 import {
   Plus, Copy, Video, ArrowRight, Check, Radio, FileText,
-  Clock, Hash, Sparkles, Search, X, User, Phone,
+  Clock, Hash, Sparkles, Search, X, User, Phone, UserCog, Users2,
 } from "lucide-react";
 import { formatDuration } from "@/lib/utils";
 import { AppNav } from "@/components/AppNav";
@@ -15,12 +15,23 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { Input, Label } from "@/components/ui/Input";
-import type { Session } from "@supportvision/types";
+import { Avatar } from "@/components/ui/Avatar";
+import { KpiPanel } from "@/components/KpiPanel";
+import type { Session, AgentKpi } from "@supportvision/types";
+
+interface AgentOption {
+  _id: string;
+  name: string;
+  email: string;
+}
 
 interface Props {
   agentName: string;
   agentId: string;
+  role: "ADMIN" | "AGENT";
   initialSessions: Session[];
+  agents: AgentOption[];
+  kpi: AgentKpi | null;
 }
 
 const STATUS_TONE = {
@@ -29,7 +40,8 @@ const STATUS_TONE = {
   ENDED: "neutral",
 } as const;
 
-export function DashboardClient({ agentName, initialSessions }: Props) {
+export function DashboardClient({ agentName, role, initialSessions, agents, kpi }: Props) {
+  const isAdmin = role === "ADMIN";
   const [sessions, setSessions] = useState(initialSessions);
   const [creating, setCreating] = useState(false);
   const [invite, setInvite] = useState<{ url: string; sessionId: string } | null>(null);
@@ -38,6 +50,7 @@ export function DashboardClient({ agentName, initialSessions }: Props) {
   const [nameInput, setNameInput] = useState("");
   const [custName, setCustName] = useState("");
   const [custPhone, setCustPhone] = useState("");
+  const [assignedAgentId, setAssignedAgentId] = useState(agents[0]?._id ?? "");
   const [query, setQuery] = useState("");
   const router = useRouter();
 
@@ -45,15 +58,21 @@ export function DashboardClient({ agentName, initialSessions }: Props) {
     setNameInput("");
     setCustName("");
     setCustPhone("");
+    setAssignedAgentId(agents[0]?._id ?? "");
   }
 
   async function createSession() {
+    if (!assignedAgentId) {
+      toast.error("Assign the session to an agent");
+      return;
+    }
     setCreating(true);
     try {
       const { data } = await axios.post("/api/session/create", {
         name: nameInput.trim(),
         customerName: custName.trim(),
         customerPhone: custPhone.trim(),
+        assignedAgentId,
       });
       if (data.success) {
         const { session, inviteUrl } = data.data;
@@ -61,10 +80,10 @@ export function DashboardClient({ agentName, initialSessions }: Props) {
         setInvite({ url: inviteUrl, sessionId: session._id });
         setModalOpen(false);
         resetForm();
-        toast.success("Session created");
+        toast.success("Session created & assigned");
       }
-    } catch {
-      toast.error("Failed to create session");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error ?? "Failed to create session");
     } finally {
       setCreating(false);
     }
@@ -92,47 +111,82 @@ export function DashboardClient({ agentName, initialSessions }: Props) {
   }, [sessions, query]);
 
   const stats = [
-    { label: "Total sessions", value: sessions.length, icon: Hash, tone: "text-foreground" },
-    { label: "Active now", value: sessions.filter((s) => s.status === "ACTIVE").length, icon: Radio, tone: "text-success" },
-    { label: "Completed", value: sessions.filter((s) => s.status === "ENDED").length, icon: Check, tone: "text-accent" },
+    { label: "Total sessions", value: sessions.length, icon: Hash, tone: "text-primary", soft: "bg-primary-soft" },
+    { label: "Active now", value: sessions.filter((s) => s.status === "ACTIVE").length, icon: Radio, tone: "text-success", soft: "bg-success-soft" },
+    { label: "Completed", value: sessions.filter((s) => s.status === "ENDED").length, icon: Check, tone: "text-accent", soft: "bg-accent-soft" },
   ];
+
+  const firstName = agentName.split(" ")[0];
 
   return (
     <div className="bg-canvas min-h-screen">
-      <AppNav agentName={agentName} />
+      <AppNav agentName={agentName} role={role} />
 
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
-        {/* Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div className="animate-fade-up">
-            <h1 className="text-2xl font-semibold tracking-tighter text-foreground sm:text-3xl">
-              Support sessions
-            </h1>
-            <p className="mt-1.5 text-sm text-muted-foreground">
-              Create a session, share the invite, and jump on a video call.
-            </p>
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+        {/* Hero header */}
+        <div className="animate-fade-up relative overflow-hidden rounded-xl border border-border bg-surface p-6 elevation-1 sm:p-8">
+          {/* decorative gradient + grid */}
+          <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-24 right-1/3 h-56 w-56 rounded-full bg-accent/10 blur-3xl" />
+          <div
+            className="pointer-events-none absolute inset-0 opacity-[0.4]"
+            style={{
+              backgroundImage:
+                "radial-gradient(hsl(var(--border)) 1px, transparent 1px)",
+              backgroundSize: "20px 20px",
+              maskImage: "radial-gradient(ellipse 60% 80% at 100% 0%, black, transparent)",
+            }}
+          />
+          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary-soft px-2.5 py-0.5 text-[0.7rem] font-semibold uppercase tracking-wide text-primary-hover">
+                {isAdmin ? <UserCog className="h-3 w-3" /> : <Radio className="h-3 w-3" />}
+                {isAdmin ? "Admin console" : "Agent console"}
+              </span>
+              <h1 className="mt-3 text-2xl font-semibold tracking-tighter text-foreground sm:text-3xl">
+                Welcome back, {firstName}
+              </h1>
+              <p className="mt-1.5 max-w-md text-sm text-muted-foreground">
+                {isAdmin
+                  ? "Create support sessions, assign them to your support team, and oversee every call in one place."
+                  : "Here are the support sessions assigned to you. Jump in when you're ready."}
+              </p>
+            </div>
+            {isAdmin && (
+              <Button onClick={() => setModalOpen(true)} size="lg" className="group shrink-0">
+                <Plus className="h-4 w-4" />
+                New session
+              </Button>
+            )}
           </div>
-          <Button onClick={() => setModalOpen(true)} size="lg" className="group">
-            <Plus className="h-4 w-4" />
-            New session
-          </Button>
         </div>
 
         {/* Stats */}
-        <div className="stagger mt-6 grid grid-cols-3 gap-3 sm:mt-8 sm:gap-4">
-          {stats.map(({ label, value, icon: Icon, tone }) => (
+        <div className="stagger mt-5 grid grid-cols-3 gap-3 sm:gap-4">
+          {stats.map(({ label, value, icon: Icon, tone, soft }) => (
             <div
               key={label}
-              className="group relative overflow-hidden rounded-lg border border-border bg-surface p-3.5 elevation-1 transition-all hover:-translate-y-0.5 hover:elevation-2 sm:p-5"
+              className="group relative overflow-hidden rounded-xl border border-border bg-surface p-3.5 elevation-1 transition-all hover:-translate-y-1 hover:elevation-2 sm:p-5"
             >
-              <Icon className={`mb-2 h-5 w-5 sm:mb-3 ${tone}`} />
-              <div className="text-2xl font-semibold tracking-tighter text-foreground tabular-nums sm:text-3xl">
+              <div className="flex items-start justify-between">
+                <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${soft} ${tone} sm:h-10 sm:w-10`}>
+                  <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                </span>
+              </div>
+              <div className="mt-3 text-2xl font-semibold tracking-tighter tabular-nums text-foreground sm:text-4xl">
                 {value}
               </div>
-              <div className="mt-0.5 text-[0.7rem] font-medium text-muted-foreground sm:text-xs">{label}</div>
+              <div className="mt-0.5 text-[0.7rem] font-medium text-muted-foreground sm:text-sm">{label}</div>
             </div>
           ))}
         </div>
+
+        {/* Personal KPIs (agents only) */}
+        {!isAdmin && kpi && (
+          <div className="mt-5 animate-fade-up">
+            <KpiPanel kpi={kpi} title="Your performance" subtitle="from customer feedback" />
+          </div>
+        )}
 
         {/* Invite banner */}
         {invite && (
@@ -143,7 +197,7 @@ export function DashboardClient({ agentName, initialSessions }: Props) {
                   <Sparkles className="h-5 w-5" />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground">Invite link is ready</p>
+                  <p className="text-sm font-semibold text-foreground">Customer invite link is ready</p>
                   <p className="truncate font-mono text-xs text-muted-foreground">{invite.url}</p>
                 </div>
               </div>
@@ -152,9 +206,9 @@ export function DashboardClient({ agentName, initialSessions }: Props) {
                   {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
                   {copied ? "Copied" : "Copy link"}
                 </Button>
-                <Button size="md" onClick={() => router.push(`/call/${invite.sessionId}`)}>
-                  <Video className="h-4 w-4" />
-                  Join call
+                <Button size="md" onClick={() => router.push(`/session/${invite.sessionId}`)}>
+                  <FileText className="h-4 w-4" />
+                  View session
                 </Button>
               </div>
             </div>
@@ -179,7 +233,7 @@ export function DashboardClient({ agentName, initialSessions }: Props) {
           </div>
 
           {sessions.length === 0 ? (
-            <EmptyState onCreate={() => setModalOpen(true)} />
+            <EmptyState isAdmin={isAdmin} onCreate={() => setModalOpen(true)} />
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border-strong bg-surface/50 py-16 text-center">
               <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-muted text-muted-foreground">
@@ -222,6 +276,12 @@ export function DashboardClient({ agentName, initialSessions }: Props) {
                       </Badge>
                     </div>
                     <div className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-subtle">
+                      {isAdmin && s.agentName && (
+                        <span className="flex items-center gap-1 font-medium text-accent">
+                          <Users2 className="h-3 w-3" />
+                          {s.agentName}
+                        </span>
+                      )}
                       <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
                         {formatDistanceToNow(new Date(s.createdAt), { addSuffix: true })}
@@ -242,7 +302,11 @@ export function DashboardClient({ agentName, initialSessions }: Props) {
                     </div>
                   </div>
 
-                  {s.status !== "ENDED" ? (
+                  {isAdmin ? (
+                    <Button variant="outline" size="sm" onClick={() => router.push(`/session/${s._id}`)}>
+                      View details
+                    </Button>
+                  ) : s.status !== "ENDED" ? (
                     <Button
                       size="sm"
                       onClick={() => router.push(`/call/${s._id}`)}
@@ -268,7 +332,7 @@ export function DashboardClient({ agentName, initialSessions }: Props) {
         open={modalOpen}
         onClose={() => !creating && setModalOpen(false)}
         title="New support session"
-        description="Give it a name so you can find it later."
+        description="Name it, add customer details, and assign a support agent."
       >
         <form
           onSubmit={(e) => {
@@ -288,6 +352,32 @@ export function DashboardClient({ agentName, initialSessions }: Props) {
           <p className="mt-1.5 text-xs text-subtle">
             Optional — defaults to “Untitled session”.
           </p>
+
+          {/* Assign to a captain */}
+          <div className="mt-4">
+            <Label htmlFor="assign-agent">Assign to agent</Label>
+            {agents.length === 0 ? (
+              <p className="rounded border border-dashed border-border-strong bg-surface-2 px-3 py-2.5 text-xs text-muted-foreground">
+                No agents yet — add one in <span className="font-medium text-foreground">Team</span> first.
+              </p>
+            ) : (
+              <div className="flex items-center gap-2 rounded border border-input bg-surface px-3 transition-colors focus-within:border-primary">
+                <Users2 className="h-4 w-4 text-muted-foreground" />
+                <select
+                  id="assign-agent"
+                  value={assignedAgentId}
+                  onChange={(e) => setAssignedAgentId(e.target.value)}
+                  className="h-11 w-full cursor-pointer bg-transparent text-sm text-foreground focus:outline-none"
+                >
+                  {agents.map((a) => (
+                    <option key={a._id} value={a._id}>
+                      {a.name} — {a.email}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
 
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
@@ -325,9 +415,9 @@ export function DashboardClient({ agentName, initialSessions }: Props) {
             >
               Cancel
             </Button>
-            <Button type="submit" loading={creating}>
+            <Button type="submit" loading={creating} disabled={agents.length === 0}>
               <Plus className="h-4 w-4" />
-              Create session
+              Create & assign
             </Button>
           </div>
         </form>
@@ -336,7 +426,7 @@ export function DashboardClient({ agentName, initialSessions }: Props) {
   );
 }
 
-function EmptyState({ onCreate }: { onCreate: () => void }) {
+function EmptyState({ isAdmin, onCreate }: { isAdmin: boolean; onCreate: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border-strong bg-surface/50 py-20 text-center">
       <span className="flex h-14 w-14 items-center justify-center rounded-lg bg-primary-soft text-primary">
@@ -344,12 +434,16 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
       </span>
       <p className="mt-4 text-base font-medium text-foreground">No sessions yet</p>
       <p className="mt-1 max-w-xs text-sm text-muted-foreground">
-        Create your first session to invite a customer to a video support call.
+        {isAdmin
+          ? "Create your first session and assign it to a support agent to get started."
+          : "You have no assigned sessions yet. Your admin will assign one to you."}
       </p>
-      <Button onClick={onCreate} className="mt-5">
-        <Plus className="h-4 w-4" />
-        New session
-      </Button>
+      {isAdmin && (
+        <Button onClick={onCreate} className="mt-5">
+          <Plus className="h-4 w-4" />
+          New session
+        </Button>
+      )}
     </div>
   );
 }

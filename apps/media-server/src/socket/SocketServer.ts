@@ -10,6 +10,7 @@ import { registerSessionHandlers, handleDisconnect } from "./handlers/session";
 import { registerMediasoupHandlers } from "./handlers/mediasoup";
 import { registerChatHandlers } from "./handlers/chat";
 import { registerRecordingHandlers } from "./handlers/recording";
+import { registerFeedbackHandlers } from "./handlers/feedback";
 import { config } from "../config";
 import { logger } from "../lib/logger";
 
@@ -32,6 +33,7 @@ export function createSocketServer(httpServer: HttpServer): Server<ClientToServe
     registerMediasoupHandlers(socket);
     registerChatHandlers(socket);
     registerRecordingHandlers(socket);
+    registerFeedbackHandlers(socket);
 
     socket.on("disconnect", async (reason) => {
       logger.info(`Socket disconnected: ${socket.id} (reason: ${reason})`);

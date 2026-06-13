@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import {
   Mic, MicOff, Video, VideoOff, MessageSquare,
-  Circle, Square, PhoneOff, SwitchCamera,
+  Circle, Square, PhoneOff, SwitchCamera, Loader2, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { UserRole } from "@supportvision/types";
+import type { EndState } from "@/hooks/useCall";
 
 interface Props {
   role: UserRole;
@@ -15,33 +15,23 @@ interface Props {
   isRecording: boolean;
   unreadCount: number;
   canFlipCamera?: boolean;
+  endState: EndState;
   onToggleMute: () => void;
   onToggleVideo: () => void;
   onToggleChat: () => void;
   onFlipCamera?: () => void;
   onStartRecording: () => void;
   onStopRecording: () => void;
-  onEndSession: () => void;
+  onRequestEnd: () => void;
+  onConfirmEnd: () => void;
+  onCancelEnd: () => void;
 }
 
 export function CallControls({
-  role, isLocalMuted, isLocalVideoOff, isRecording, unreadCount, canFlipCamera,
+  role, isLocalMuted, isLocalVideoOff, isRecording, unreadCount, canFlipCamera, endState,
   onToggleMute, onToggleVideo, onToggleChat, onFlipCamera,
-  onStartRecording, onStopRecording, onEndSession,
+  onStartRecording, onStopRecording, onRequestEnd, onConfirmEnd, onCancelEnd,
 }: Props) {
-  const [confirmEnd, setConfirmEnd] = useState(false);
-
-  function handleEnd() {
-    if (role !== "AGENT") {
-      window.location.href = "/";
-      return;
-    }
-    if (confirmEnd) onEndSession();
-    else {
-      setConfirmEnd(true);
-      setTimeout(() => setConfirmEnd(false), 4000);
-    }
-  }
 
   return (
     <div className="flex items-center justify-center px-2 pb-4 pt-2 sm:px-4 sm:pb-5">
@@ -98,21 +88,47 @@ export function CallControls({
 
         <div className="mx-0.5 h-8 w-px bg-white/10 sm:mx-1" />
 
-        {/* End / Leave */}
-        <button
-          onClick={handleEnd}
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3.5 py-2.5 text-sm font-medium text-white transition-all active:scale-95 sm:px-4",
-            confirmEnd
-              ? "bg-danger ring-2 ring-danger/40 ring-offset-2 ring-offset-[hsl(222_30%_12%)]"
-              : "bg-danger/90 hover:bg-danger"
-          )}
-        >
-          <PhoneOff className="h-5 w-5" />
-          <span className="hidden sm:inline">
-            {role === "AGENT" ? (confirmEnd ? "Confirm end" : "End call") : "Leave"}
-          </span>
-        </button>
+        {/* End / Leave — agents gate the end on customer feedback */}
+        {role !== "AGENT" ? (
+          <button
+            onClick={() => (window.location.href = "/")}
+            className="flex items-center gap-2 rounded-lg bg-danger/90 px-3.5 py-2.5 text-sm font-medium text-white transition-all hover:bg-danger active:scale-95 sm:px-4"
+          >
+            <PhoneOff className="h-5 w-5" />
+            <span className="hidden sm:inline">Leave</span>
+          </button>
+        ) : endState === "idle" ? (
+          <button
+            onClick={onRequestEnd}
+            className="flex items-center gap-2 rounded-lg bg-danger/90 px-3.5 py-2.5 text-sm font-medium text-white transition-all hover:bg-danger active:scale-95 sm:px-4"
+          >
+            <PhoneOff className="h-5 w-5" />
+            <span className="hidden sm:inline">End call</span>
+          </button>
+        ) : endState === "awaiting-feedback" ? (
+          <div className="flex items-center gap-1.5">
+            <span className="flex cursor-not-allowed items-center gap-2 rounded-lg bg-white/10 px-3.5 py-2.5 text-sm font-medium text-white/60 sm:px-4">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="hidden sm:inline">Awaiting feedback…</span>
+            </span>
+            <button
+              onClick={onCancelEnd}
+              title="Cancel ending"
+              aria-label="Cancel ending"
+              className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/8 text-white/80 transition-colors hover:bg-white/15"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={onConfirmEnd}
+            className="flex items-center gap-2 rounded-lg bg-danger px-3.5 py-2.5 text-sm font-medium text-white ring-2 ring-danger/40 ring-offset-2 ring-offset-[hsl(222_30%_12%)] transition-all hover:bg-danger-hover active:scale-95 sm:px-4"
+          >
+            <PhoneOff className="h-5 w-5" />
+            <span className="hidden sm:inline">Confirm end</span>
+          </button>
+        )}
       </div>
     </div>
   );

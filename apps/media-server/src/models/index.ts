@@ -143,3 +143,39 @@ const recordingSchema = new Schema<IRecording>(
 export const RecordingModel: Model<IRecording> =
   (mongoose.models.Recording as Model<IRecording>) ??
   mongoose.model<IRecording>("Recording", recordingSchema);
+
+// ─── Feedback ─────────────────────────────────────────────────────────────────
+
+export interface IFeedback {
+  _id: mongoose.Types.ObjectId;
+  sessionId: string;
+  agentId: string;
+  agentName: string;
+  customerName: string;
+  ratings: { handling: number; courteousness: number; promptness: number };
+  overall: number;
+  comment: string;
+  createdAt: Date;
+}
+
+const feedbackSchema = new Schema<IFeedback>(
+  {
+    sessionId: { type: String, required: true, index: true },
+    agentId: { type: String, required: true, index: true },
+    agentName: { type: String, required: true },
+    customerName: { type: String, default: "" },
+    ratings: {
+      handling: { type: Number, min: 1, max: 5, required: true },
+      courteousness: { type: Number, min: 1, max: 5, required: true },
+      promptness: { type: Number, min: 1, max: 5, required: true },
+    },
+    overall: { type: Number, min: 1, max: 5, required: true },
+    comment: { type: String, default: "" },
+    createdAt: { type: Date, default: Date.now },
+  },
+  { timestamps: false }
+);
+
+export const FeedbackModel: Model<IFeedback> =
+  (mongoose.models.Feedback as Model<IFeedback>) ??
+  mongoose.model<IFeedback>("Feedback", feedbackSchema);

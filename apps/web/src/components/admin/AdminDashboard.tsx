@@ -53,12 +53,12 @@ export function AdminDashboard({ agentName }: { agentName: string }) {
     { label: "Connected users", value: metrics?.connectedParticipants ?? 0, icon: Users, tone: "text-accent", soft: "bg-accent-soft" },
     { label: "Sessions today", value: metrics?.totalSessionsToday ?? 0, icon: CalendarDays, tone: "text-primary", soft: "bg-primary-soft" },
     { label: "Messages today", value: metrics?.totalMessagesToday ?? 0, icon: MessageSquare, tone: "text-[hsl(265_60%_55%)]", soft: "bg-[hsl(265_100%_97%)]" },
-    { label: "Recordings", value: metrics?.recordingsProcessing ?? 0, icon: Disc, tone: "text-warning", soft: "bg-warning-soft" },
+    { label: "Recordings", value: metrics?.totalRecordings ?? 0, icon: Disc, tone: "text-warning", soft: "bg-warning-soft" },
   ];
 
   return (
     <div className="bg-canvas min-h-screen">
-      <AppNav agentName={agentName} />
+      <AppNav agentName={agentName} role="ADMIN" />
 
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
         <div className="flex items-end justify-between">

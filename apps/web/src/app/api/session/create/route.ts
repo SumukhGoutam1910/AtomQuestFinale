@@ -3,14 +3,24 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { SessionModel } from "@/models/Session";
+import { UserModel } from "@/models/User";
 import { generateInviteToken, buildInviteUrl } from "@supportvision/shared";
 import type { ApiResponse, Session } from "@supportvision/types";
 
-export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse<{ session: Session; inviteUrl: string }>>> {
+export async function POST(
+  req: NextRequest
+): Promise<NextResponse<ApiResponse<{ session: Session; inviteUrl: string }>>> {
   try {
     const serverSession = await getServerSession(authOptions);
     if (!serverSession?.user) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+    // Only admins create and assign sessions.
+    if (serverSession.user.role !== "ADMIN") {
+      return NextResponse.json(
+        { success: false, error: "Only admins can create sessions" },
+        { status: 403 }
+      );
     }
 
     await connectDB();
@@ -22,14 +32,29 @@ export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse<{
       typeof body?.customerName === "string" ? body.customerName.trim().slice(0, 80) : "";
     const customerPhone =
       typeof body?.customerPhone === "string" ? body.customerPhone.trim().slice(0, 30) : "";
+    const assignedAgentId = typeof body?.assignedAgentId === "string" ? body.assignedAgentId : "";
+
+    if (!assignedAgentId) {
+      return NextResponse.json(
+        { success: false, error: "Please assign the session to an agent" },
+        { status: 400 }
+      );
+    }
+
+    const agent = await UserModel.findById(assignedAgentId).lean();
+    if (!agent || agent.role !== "AGENT") {
+      return NextResponse.json({ success: false, error: "Assigned agent not found" }, { status: 404 });
+    }
 
     const inviteToken = generateInviteToken();
     const session = await SessionModel.create({
       name,
       customerName,
       customerPhone,
-      agentId: serverSession.user.id,
-      agentName: serverSession.user.name,
+      agentId: agent._id.toString(),
+      agentName: agent.name,
+      createdById: serverSession.user.id,
+      createdByName: serverSession.user.name,
       inviteToken,
       status: "CREATED",
     });
@@ -47,6 +72,8 @@ export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse<{
           customerPhone: session.customerPhone,
           agentId: session.agentId,
           agentName: session.agentName,
+          createdById: session.createdById,
+          createdByName: session.createdByName,
           inviteToken: session.inviteToken,
           status: session.status,
           startedAt: null,

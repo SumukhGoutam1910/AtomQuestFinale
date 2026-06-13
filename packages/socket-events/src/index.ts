@@ -8,6 +8,7 @@ import type {
   RtpParameters,
   RecordingStatus,
   UserRole,
+  Ratings,
 } from "@supportvision/types";
 
 // ─── Client → Server events ───────────────────────────────────────────────────
@@ -99,6 +100,17 @@ export interface ClientToServerEvents {
     cb: (res: { success: boolean; error?: string }) => void
   ) => void;
 
+  // Feedback (end-of-call): agent requests, customer submits
+  "feedback:request": (
+    payload: { sessionId: string },
+    cb: (res: { success: boolean; customerPresent: boolean; error?: string }) => void
+  ) => void;
+
+  "feedback:submit": (
+    payload: { sessionId: string; ratings: Ratings; comment: string },
+    cb: (res: { success: boolean; error?: string }) => void
+  ) => void;
+
   // Reconnect
   "session:reconnect": (
     payload: { sessionId: string; participantId: string; inviteToken?: string },
@@ -143,6 +155,10 @@ export interface ServerToClientEvents {
     status: RecordingStatus;
     recordingUrl?: string;
   }) => void;
+
+  // Feedback
+  "feedback:requested": (payload: { sessionId: string; agentName: string }) => void;
+  "feedback:received": (payload: { sessionId: string }) => void;
 
   // Error
   "server:error": (payload: { code: string; message: string }) => void;

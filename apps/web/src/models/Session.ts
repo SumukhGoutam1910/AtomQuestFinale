@@ -4,8 +4,12 @@ export interface ISession extends Document {
   name: string;
   customerName: string;
   customerPhone: string;
+  // The assigned agent ("captain") who runs the call.
   agentId: string;
   agentName: string;
+  // The admin who created and assigned the session.
+  createdById: string;
+  createdByName: string;
   inviteToken: string;
   status: "CREATED" | "ACTIVE" | "ENDED";
   startedAt: Date | null;
@@ -22,6 +26,8 @@ const sessionSchema = new Schema<ISession>(
     customerPhone: { type: String, default: "", trim: true },
     agentId: { type: String, required: true, index: true },
     agentName: { type: String, required: true },
+    createdById: { type: String, default: "", index: true },
+    createdByName: { type: String, default: "" },
     inviteToken: { type: String, required: true, unique: true, index: true },
     status: {
       type: String,

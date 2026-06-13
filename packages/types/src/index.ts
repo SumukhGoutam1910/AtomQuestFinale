@@ -10,6 +10,18 @@ export interface User {
   createdAt: string;
 }
 
+// Platform account (Admin or Agent/Captain) for team management.
+export interface TeamMember {
+  _id: string;
+  name: string;
+  email: string;
+  role: "ADMIN" | "AGENT";
+  isActive: boolean;
+  createdAt: string;
+  sessionCount?: number;
+  kpi?: AgentKpi;
+}
+
 // ─── Session ─────────────────────────────────────────────────────────────────
 
 export type SessionStatus = "CREATED" | "ACTIVE" | "ENDED";
@@ -21,6 +33,8 @@ export interface Session {
   customerPhone: string;
   agentId: string;
   agentName: string;
+  createdById?: string;
+  createdByName?: string;
   inviteToken: string;
   status: SessionStatus;
   startedAt: string | null;
@@ -226,6 +240,40 @@ export interface ApiError {
 
 export type ApiResponse<T> = ApiSuccess<T> | ApiError;
 
+// ─── Feedback & KPI ────────────────────────────────────────────────────────
+
+export const KPI_METRICS = ["handling", "courteousness", "promptness"] as const;
+export type KpiMetric = (typeof KPI_METRICS)[number];
+
+export const KPI_METRIC_LABELS: Record<KpiMetric, string> = {
+  handling: "Issue handling",
+  courteousness: "Courteousness",
+  promptness: "Promptness",
+};
+
+export type Ratings = Record<KpiMetric, number>; // each 1–5
+
+export interface Feedback {
+  _id: string;
+  sessionId: string;
+  agentId: string;
+  agentName: string;
+  customerName: string;
+  ratings: Ratings;
+  overall: number; // average of the metric ratings
+  comment: string;
+  createdAt: string;
+}
+
+// Aggregated KPI for one agent.
+export interface AgentKpi {
+  agentId: string;
+  agentName: string;
+  feedbackCount: number;
+  overall: number; // avg overall rating
+  averages: Ratings; // per-metric averages
+}
+
 // ─── Admin / Metrics ─────────────────────────────────────────────────────────
 
 export interface SystemMetrics {
@@ -233,6 +281,7 @@ export interface SystemMetrics {
   connectedParticipants: number;
   totalSessionsToday: number;
   totalMessagesToday: number;
+  totalRecordings: number;
   recordingsProcessing: number;
   uptime: number;
 }

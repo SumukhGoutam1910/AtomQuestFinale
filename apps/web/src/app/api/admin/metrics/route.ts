@@ -19,12 +19,14 @@ export async function GET(): Promise<NextResponse<ApiResponse<SystemMetrics>>> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const [activeSessions, todaySessions, todayMessages, processingRecordings] = await Promise.all([
-      SessionModel.countDocuments({ status: { $in: ["CREATED", "ACTIVE"] } }),
-      SessionModel.countDocuments({ createdAt: { $gte: today } }),
-      MessageModel.countDocuments({ createdAt: { $gte: today } }),
-      RecordingModel.countDocuments({ status: "PROCESSING" }),
-    ]);
+    const [activeSessions, todaySessions, todayMessages, totalRecordings, processingRecordings] =
+      await Promise.all([
+        SessionModel.countDocuments({ status: { $in: ["CREATED", "ACTIVE"] } }),
+        SessionModel.countDocuments({ createdAt: { $gte: today } }),
+        MessageModel.countDocuments({ createdAt: { $gte: today } }),
+        RecordingModel.countDocuments({}),
+        RecordingModel.countDocuments({ status: "PROCESSING" }),
+      ]);
 
     // Get connected participants from media server
     let connectedParticipants = 0;
@@ -46,6 +48,7 @@ export async function GET(): Promise<NextResponse<ApiResponse<SystemMetrics>>> {
         connectedParticipants,
         totalSessionsToday: todaySessions,
         totalMessagesToday: todayMessages,
+        totalRecordings,
         recordingsProcessing: processingRecordings,
         uptime: process.uptime(),
       },

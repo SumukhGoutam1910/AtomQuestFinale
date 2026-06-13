@@ -37,16 +37,17 @@ export default async function CallPage({ params }: { params: Promise<{ sessionId
     );
   }
 
-  // Server session determines if user is an agent
+  // A logged-in user joins as the AGENT only if they're the assigned captain
+  // or an admin. Anyone not logged in goes through the customer/invite flow.
   const serverSession = await getServerSession(authOptions);
-  const agentSession = serverSession?.user;
+  const user = serverSession?.user;
+  const isAssignedAgent = !!user && (user.role === "ADMIN" || session.agentId === user.id);
 
   return (
     <CallScreen
       sessionId={sessionId}
       inviteToken={session.inviteToken}
-      // Agent data if the user is logged in
-      agentData={agentSession ? { name: agentSession.name, id: agentSession.id } : null}
+      agentData={isAssignedAgent && user ? { name: user.name, id: user.id } : null}
     />
   );
 }

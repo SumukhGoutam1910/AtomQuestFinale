@@ -17,6 +17,7 @@ import {
 import { AppNav } from "@/components/AppNav";
 import { Badge } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
+import { CopyInviteButton } from "@/components/session/CopyInviteButton";
 
 export default async function SessionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -26,7 +27,11 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
   await connectDB();
 
   const session = await SessionModel.findById(id).lean();
-  if (!session || session.agentId !== serverSession.user.id) notFound();
+  // Admins can view any session; agents only their assigned ones.
+  const canView =
+    !!session &&
+    (serverSession.user.role === "ADMIN" || session.agentId === serverSession.user.id);
+  if (!canView) notFound();
 
   const [participants, messages, recording] = await Promise.all([
     ParticipantModel.find({ sessionId: id }).sort({ joinedAt: 1 }).lean(),
@@ -37,10 +42,11 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
   const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
   const inviteUrl = `${baseUrl}/join/${session.inviteToken}`;
   const statusTone = session.status === "ACTIVE" ? "success" : session.status === "CREATED" ? "warning" : "neutral";
+  const isAdmin = serverSession.user.role === "ADMIN";
 
   return (
     <div className="bg-canvas min-h-screen">
-      <AppNav agentName={serverSession.user.name} />
+      <AppNav agentName={serverSession.user.name} role={serverSession.user.role} />
 
       <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
         <Link
@@ -89,16 +95,32 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
 
         {session.status !== "ENDED" && (
           <div className="mt-4 flex flex-col gap-3 rounded-lg border border-primary/25 bg-primary-soft/50 p-4 sm:flex-row sm:items-center">
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-medium uppercase tracking-wide text-primary">Invite link</p>
-              <p className="mt-0.5 truncate font-mono text-xs text-foreground">{inviteUrl}</p>
-            </div>
-            <Link
-              href={`/call/${session._id.toString()}`}
-              className="inline-flex items-center justify-center gap-2 rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
-            >
-              Rejoin call
-            </Link>
+            {isAdmin ? (
+              <>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium uppercase tracking-wide text-primary">
+                    Customer invite link — share with the customer
+                  </p>
+                  <p className="mt-0.5 truncate font-mono text-xs text-foreground">{inviteUrl}</p>
+                </div>
+                <CopyInviteButton url={inviteUrl} />
+              </>
+            ) : (
+              <>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium uppercase tracking-wide text-primary">Your assigned session</p>
+                  <p className="mt-0.5 text-sm text-muted-foreground">
+                    Jump in when you're ready — the customer joins via the link your admin shared.
+                  </p>
+                </div>
+                <Link
+                  href={`/call/${session._id.toString()}`}
+                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover"
+                >
+                  {session.status === "ACTIVE" ? "Rejoin call" : "Start call"}
+                </Link>
+              </>
+            )}
           </div>
         )}
 

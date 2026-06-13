@@ -62,14 +62,14 @@ export const authOptions: NextAuthOptions = {
 // Extend next-auth types
 declare module "next-auth" {
   interface User {
-    role: "AGENT";
+    role: "ADMIN" | "AGENT";
   }
   interface Session {
     user: {
       id: string;
       name: string;
       email: string;
-      role: "AGENT";
+      role: "ADMIN" | "AGENT";
     };
   }
 }
@@ -77,6 +77,6 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     id: string;
-    role: "AGENT";
+    role: "ADMIN" | "AGENT";
   }
 }

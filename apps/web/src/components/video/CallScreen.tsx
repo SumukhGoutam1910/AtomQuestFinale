@@ -8,6 +8,7 @@ import { useChatStore } from "@/store/chatStore";
 import { VideoGrid } from "./VideoGrid";
 import { CallControls } from "./CallControls";
 import { PreJoin } from "./PreJoin";
+import { FeedbackForm } from "./FeedbackForm";
 import { ChatPanel } from "@/components/chat/ChatPanel";
 import { Logo } from "@/components/ui/Logo";
 import { cn } from "@/lib/utils";
@@ -69,7 +70,11 @@ function ActiveCall({
   sessionId: string;
   identity: Identity;
 }) {
-  const { callState, sendMessage, endSession, startRecording, stopRecording, flipCamera } = useCall({
+  const {
+    callState, sendMessage, startRecording, stopRecording, flipCamera,
+    endState, requestEnd, cancelEnd, confirmEnd,
+    feedbackOpen, feedbackAgentName, submitFeedback,
+  } = useCall({
     sessionId,
     userName: identity.userName,
     role: identity.role,
@@ -181,13 +186,16 @@ function ActiveCall({
           isRecording={isRecording}
           unreadCount={unreadCount}
           canFlipCamera={canFlip}
+          endState={endState}
           onToggleMute={() => useCallStore.getState().toggleMute()}
           onToggleVideo={() => useCallStore.getState().toggleVideo()}
           onToggleChat={toggleChat}
           onFlipCamera={flipCamera}
           onStartRecording={startRecording}
           onStopRecording={stopRecording}
-          onEndSession={endSession}
+          onRequestEnd={requestEnd}
+          onConfirmEnd={confirmEnd}
+          onCancelEnd={cancelEnd}
         />
       </div>
 
@@ -200,6 +208,11 @@ function ActiveCall({
           onSendMessage={sendMessage}
           onClose={toggleChat}
         />
+      )}
+
+      {/* Customer feedback form (shown when the agent ends the call) */}
+      {feedbackOpen && (
+        <FeedbackForm agentName={feedbackAgentName} onSubmit={submitFeedback} />
       )}
     </div>
   );
