@@ -21,7 +21,12 @@ export const config = {
   },
 
   mediasoup: {
-    numWorkers: parseInt(process.env.MEDIASOUP_WORKERS ?? "2", 10),
+    numWorkers: parseInt(process.env.MEDIASOUP_WORKERS ?? "1", 10),
+    // Single fixed port per worker (multiplexed via WebRtcServer) so it maps
+    // cleanly to one exposed UDP/TCP port on Fly.io / any single-IP host.
+    rtcPort: parseInt(process.env.RTC_PORT ?? "10000", 10),
+    listenIp: process.env.MEDIASOUP_LISTEN_IP ?? "0.0.0.0",
+    announcedIp: process.env.MEDIASOUP_ANNOUNCED_IP ?? "127.0.0.1",
     workerSettings: {
       logLevel: (process.env.MEDIASOUP_LOG_LEVEL ?? "warn") as "debug" | "warn" | "error" | "none",
       rtcMinPort: parseInt(process.env.RTC_MIN_PORT ?? "10000", 10),

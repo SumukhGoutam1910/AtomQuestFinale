@@ -1,35 +1,46 @@
-# Fly.io deployment config for media server
-# Deploy with: fly deploy --config fly.toml
+# Fly.io deployment config — SupportVision media server (mediasoup SFU + Socket.IO)
+# Deploy: fly deploy
+# After first deploy:
+#   fly ips allocate-v4            # get a dedicated IPv4
+#   fly secrets set MONGODB_URI="..." MEDIASOUP_ANNOUNCED_IP="<that IPv4>" CORS_ORIGINS="https://your-app.vercel.app"
+#   fly deploy                     # redeploy so the announced IP takes effect
 
-app = "supportvision-media"
-primary_region = "bom"  # Mumbai — closest to India
+app = "atomquestfinale"
+primary_region = "bom"  # Mumbai
 
 [build]
   dockerfile = "apps/media-server/Dockerfile"
-  build_target = "base"
 
 [env]
   NODE_ENV = "production"
   PORT = "3001"
-  MEDIASOUP_WORKERS = "2"
-  RTC_MIN_PORT = "10000"
-  RTC_MAX_PORT = "10100"
+  MEDIASOUP_WORKERS = "1"   # single worker → single RTC port (maps cleanly to Fly)
+  RTC_PORT = "10000"
+  MEDIASOUP_LISTEN_IP = "0.0.0.0"
 
+# ── Signaling: Socket.IO over HTTPS/WSS (TLS terminated by Fly) ──
 [http_service]
   internal_port = 3001
   force_https = true
   auto_stop_machines = false
   auto_start_machines = true
-  min_machines_running = 1
+  min_machines_running = 1   # keep ONE machine → all session/room state stays in one place
 
+# ── WebRTC media: one UDP port, multiplexed via mediasoup WebRtcServer ──
 [[services]]
   protocol = "udp"
   internal_port = 10000
+  [[services.ports]]
+    port = 10000
 
+# ── ICE-TCP fallback (when UDP is blocked on the client network) ──
+[[services]]
+  protocol = "tcp"
+  internal_port = 10000
   [[services.ports]]
     port = 10000
 
 [[vm]]
   cpu_kind = "shared"
   cpus = 1
-  memory_mb = 512
+  memory_mb = 1024

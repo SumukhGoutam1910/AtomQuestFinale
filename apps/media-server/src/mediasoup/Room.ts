@@ -1,12 +1,12 @@
 import type {
   Router,
   WebRtcTransport,
+  WebRtcServer,
   Producer,
   Consumer,
   PlainTransport,
-  Worker,
 } from "mediasoup/node/lib/types";
-import { getNextWorker } from "./WorkerPool";
+import { getNextWorkerEntry } from "./WorkerPool";
 import { config } from "../config";
 import { logger } from "../lib/logger";
 import type { RtpCapabilities, DtlsParameters, RtpParameters } from "@supportvision/types";
@@ -27,6 +27,7 @@ export interface PeerState {
 export class Room {
   readonly sessionId: string;
   private router: Router | null = null;
+  private webRtcServer: WebRtcServer | null = null;
   private peers = new Map<string, PeerState>();
   private plainTransport: PlainTransport | null = null; // for recording
   private recordingProducers = new Map<string, Producer>(); // cloned producers for recording
@@ -42,7 +43,9 @@ export class Room {
   }
 
   private async init(): Promise<void> {
-    const worker: Worker = getNextWorker();
+    // Pin this room's router AND its WebRtcServer to the same worker.
+    const { worker, webRtcServer } = getNextWorkerEntry();
+    this.webRtcServer = webRtcServer;
     this.router = await worker.createRouter({
       mediaCodecs: config.mediasoup.routerMediaCodecs,
     });
@@ -93,11 +96,14 @@ export class Room {
 
   async createWebRtcTransport(participantId: string, direction: "send" | "recv"): Promise<WebRtcTransport> {
     const router = this.getRouter();
+    if (!this.webRtcServer) throw new Error("WebRtcServer not initialized");
+    // Use the shared WebRtcServer → all transports multiplex over one fixed port.
     const transport = await router.createWebRtcTransport({
-      ...config.mediasoup.webRtcTransportOptions,
+      webRtcServer: this.webRtcServer,
       enableUdp: true,
       enableTcp: true,
       preferUdp: true,
+      initialAvailableOutgoingBitrate: config.mediasoup.webRtcTransportOptions.initialAvailableOutgoingBitrate,
     });
 
     transport.on("dtlsstatechange", (state) => {
