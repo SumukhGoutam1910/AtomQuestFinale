@@ -6,7 +6,7 @@
 #   fly deploy                     # redeploy so the announced IP takes effect
 
 app = "atomquestfinale"
-primary_region = "bom"  # Mumbai
+primary_region = "sin"  # Singapore (Mumbai 'bom' was out of capacity; sin is closest with availability)
 
 [build]
   dockerfile = "apps/media-server/Dockerfile"
