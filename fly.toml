@@ -9,7 +9,7 @@ app = "atomquestfinale"
 primary_region = "sin"  # Singapore (Mumbai 'bom' was out of capacity; sin is closest with availability)
 
 [build]
-  dockerfile = "apps/media-server/Dockerfile"
+  dockerfile = "Dockerfile"
 
 [env]
   NODE_ENV = "production"

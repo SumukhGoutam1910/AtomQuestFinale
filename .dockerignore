@@ -1,0 +1,22 @@
+# Never copy local (Windows-built) deps or build output into the image
+node_modules
+**/node_modules
+.next
+**/.next
+dist
+**/dist
+.turbo
+
+# Secrets & local env (set these as Fly secrets/env instead)
+.env
+.env.*
+
+# VCS & misc
+.git
+.gitignore
+*.log
+recordings
+*.mp4
+*.webm
+.DS_Store
+Thumbs.db
