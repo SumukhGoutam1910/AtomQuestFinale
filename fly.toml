@@ -1,0 +1,35 @@
+# Fly.io deployment config for media server
+# Deploy with: fly deploy --config fly.toml
+
+app = "supportvision-media"
+primary_region = "bom"  # Mumbai — closest to India
+
+[build]
+  dockerfile = "apps/media-server/Dockerfile"
+  build_target = "base"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "3001"
+  MEDIASOUP_WORKERS = "2"
+  RTC_MIN_PORT = "10000"
+  RTC_MAX_PORT = "10100"
+
+[http_service]
+  internal_port = 3001
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[services]]
+  protocol = "udp"
+  internal_port = 10000
+
+  [[services.ports]]
+    port = 10000
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512

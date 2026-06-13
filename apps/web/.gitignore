@@ -1,0 +1,25 @@
+# Next.js
+/.next/
+/out/
+next-env.d.ts
+
+# Production build
+/build
+
+# Environment
+.env
+.env.*
+!.env.local.example
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+
+# Dev certs (next dev --experimental-https)
+certificates/
+
+# Debug
+npm-debug.log*
+.eslintcache

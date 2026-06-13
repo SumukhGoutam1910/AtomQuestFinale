@@ -1,0 +1,17 @@
+# Build output
+dist/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Recordings (if ever written locally)
+recordings/
+*.mp4
+*.webm
+
+# Logs
+*.log
+logs/
